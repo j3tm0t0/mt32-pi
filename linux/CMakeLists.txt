@@ -44,6 +44,8 @@ set(libmt32emu_CPP_INTERFACE ON CACHE BOOL "" FORCE)
 set(libmt32emu_REQUIRE_ANSI OFF CACHE BOOL "" FORCE)
 set(libmt32emu_PKGCONFIG_INSTALL_PREFIX "" CACHE STRING "" FORCE)
 add_subdirectory(${TOP}/external/munt/mt32emu ${CMAKE_BINARY_DIR}/mt32emu EXCLUDE_FROM_ALL)
+# The bare-metal build compiles mt32emu with -Ofast as well
+target_compile_options(mt32emu PRIVATE -Ofast)
 
 add_library(inih STATIC ${TOP}/external/inih/ini.c)
 target_include_directories(inih PUBLIC ${TOP}/external/inih)

@@ -111,6 +111,7 @@ and without `stress-ng` loading all cores:
 ```sh
 sudo apt install stress-ng
 linux/scripts/loadtest.sh -b build-linux/mt32-pi -d ~/mt32-pi -D hw:0 -t 60
+linux/scripts/loadtest.sh -b build-linux/mt32-pi -d ~/mt32-pi -D hw:0 -t 60 -y mt32
 ```
 
 Output latency is `chunk_size * alsa_periods / sample_rate`

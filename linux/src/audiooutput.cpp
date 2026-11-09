@@ -116,8 +116,12 @@ bool CALSAAudioOutput::Open(const char* pDevice, unsigned nSampleRate, size_t nP
 		return false;
 	}
 
+	// The synths are already running at the configured rate; a different device rate would detune everything
 	if (nRate != nSampleRate)
-		LOGWARN("Requested %u Hz, device uses %u Hz", nSampleRate, nRate);
+	{
+		LOGERR("Device '%s' does not support %u Hz (offers %u Hz); use a plughw: device or set [audio] sample_rate = %u", pDevice, nSampleRate, nRate, nRate);
+		return false;
+	}
 
 	snd_pcm_uframes_t nPeriod = nPeriodFrames;
 	snd_pcm_hw_params_set_period_size_near(pPCM, pHWParams, &nPeriod, nullptr);
