@@ -1,6 +1,10 @@
 #
 # systemd unit for mt32-pi on Linux (Raspberry Pi OS Lite etc.)
 #
+# Installed by linux/scripts/setup-pi.sh. Manual installation:
+#
+#   sudo useradd --system --no-create-home --shell /usr/sbin/nologin mt32pi
+#   sudo usermod -aG audio,dialout,gpio,i2c mt32pi
 #   sudo install -m 644 linux/mt32-pi.service /etc/systemd/system/
 #   sudo systemctl daemon-reload && sudo systemctl enable --now mt32-pi
 #
@@ -13,11 +17,13 @@ After=sound.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/mt32-pi -d /var/lib/mt32-pi
-StateDirectory=mt32-pi
-DynamicUser=yes
+User=mt32pi
+Group=mt32pi
 # audio: ALSA, dialout: GPIO UART MIDI, gpio/i2c: buttons and LCD/OLED
 SupplementaryGroups=audio dialout gpio i2c
+ExecStart=/usr/local/bin/mt32-pi -d /var/lib/mt32-pi
+StateDirectory=mt32-pi
+StateDirectoryMode=2775
 
 # Allow the audio thread to run SCHED_FIFO and lock memory
 LimitRTPRIO=95

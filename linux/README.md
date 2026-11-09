@@ -23,6 +23,24 @@ commands. The Circle-specific parts are replaced:
 Not ported (yet): MiSTer control and the built-in networking (use
 `rtpmidid` for RTP-MIDI and `scp`/Samba for files instead).
 
+## Quick setup on Raspberry Pi OS Lite
+
+On a fresh Raspberry Pi OS Lite (64-bit) install:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/j3tm0t0/mt32-pi/linux-port/linux/scripts/setup-pi.sh | sudo bash -s -- --hat
+```
+
+`linux/scripts/setup-pi.sh` builds and installs mt32-pi, creates
+`/var/lib/mt32-pi` (with the GeneralUser GS SoundFont), enables the GPIO
+UART, I²C and the I²S DAC overlay in `config.txt`, removes the serial
+console, and installs the systemd service. Reboot afterwards. Options:
+`--hat` (typical mt32-pi HAT: I²S DAC, simple_buttons, SSD1306 128x64),
+`--dac NAME` (default `hifiberry-dac` for PCM5102A boards, `none` for
+HDMI/USB audio), `--no-soundfont`. Re-running it is safe.
+
+MT-32 ROMs are not included; copy them into `/var/lib/mt32-pi/roms`.
+
 ## Building
 
 On the Pi (Raspberry Pi OS Lite, 64-bit) or in the provided Docker image:
