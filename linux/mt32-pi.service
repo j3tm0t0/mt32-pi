@@ -16,7 +16,8 @@ Type=simple
 ExecStart=/usr/local/bin/mt32-pi -d /var/lib/mt32-pi
 StateDirectory=mt32-pi
 DynamicUser=yes
-SupplementaryGroups=audio
+# audio: ALSA, dialout: GPIO UART MIDI, gpio/i2c: buttons and LCD/OLED
+SupplementaryGroups=audio dialout gpio i2c
 
 # Allow the audio thread to run SCHED_FIFO and lock memory
 LimitRTPRIO=95

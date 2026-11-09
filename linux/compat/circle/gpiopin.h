@@ -1,9 +1,15 @@
 //
 // circle/gpiopin.h - Linux compatibility shim for mt32-pi
 //
-// Declaration-only stand-in so that headers which embed CGPIOPin members
-// (e.g. control/rotaryencoder.h, pulled in by config.h for its enum types)
-// compile. GPIO-based controls are not built on Linux yet.
+// CGPIOPin backed by the Linux GPIO character device (uAPI v2, kernel 5.10+).
+// This works the same on the Pi 4 (pinctrl-bcm2711) and the Pi 5 (RP1), where
+// direct register access is no longer possible. No libgpiod dependency.
+//
+// Chip selection (CGPIOPin::SetChip, from [linux] gpio_chip):
+//   "auto"         first chip labelled pinctrl-rp1/bcm2712/bcm2711/bcm2835
+//   "/dev/gpiochipN"
+//   "sim:FILE"     simulation for testing: FILE lists the BCM pin numbers that
+//                  currently read LOW (e.g. pressed buttons); others read HIGH
 //
 
 #ifndef _circle_gpiopin_h
@@ -23,14 +29,38 @@ enum TGPIOMode
 	GPIOModeUnknown
 };
 
+class CGPIOManager;
+
 class CGPIOPin
 {
 public:
-	CGPIOPin() = default;
-	CGPIOPin(unsigned nPin, TGPIOMode Mode, void* pManager = nullptr) {}
+	CGPIOPin();
+	CGPIOPin(unsigned nPin, TGPIOMode Mode, CGPIOManager* pManager = nullptr);
+	~CGPIOPin();
 
-	unsigned Read() const { return LOW; }
-	void Write(unsigned nValue) {}
+	CGPIOPin(const CGPIOPin&) = delete;
+	CGPIOPin& operator=(const CGPIOPin&) = delete;
+
+	void AssignPin(unsigned nPin);
+	void SetMode(TGPIOMode Mode, bool bInitPin = true);
+
+	unsigned Read() const;
+	void Write(unsigned nValue);
+	void Invert() { Write(m_nValue ^ 1); }
+
+	// Levels of all requested pins as a bitmask indexed by BCM pin number
+	static u32 ReadAll();
+
+	static void SetChip(const char* pChip);
+
+private:
+	void Request();
+	void Release();
+
+	unsigned m_nPin;
+	TGPIOMode m_Mode;
+	int m_nLineFD;
+	unsigned m_nValue;
 };
 
 #endif

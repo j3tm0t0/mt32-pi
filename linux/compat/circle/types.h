@@ -41,6 +41,11 @@ typedef int boolean;
 #define ALIGN(n) __attribute__((aligned(n)))
 #endif
 
+#ifndef likely
+#define likely(exp) __builtin_expect(!!(exp), 1)
+#define unlikely(exp) __builtin_expect(!!(exp), 0)
+#endif
+
 #ifndef KILOBYTE
 #define KILOBYTE 0x400
 #define MEGABYTE 0x100000

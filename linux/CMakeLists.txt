@@ -57,6 +57,15 @@ add_executable(mt32-pi
 	${TOP}/src/midiparser.cpp
 	${TOP}/src/rommanager.cpp
 	${TOP}/src/soundfontmanager.cpp
+	${TOP}/src/control/control.cpp
+	${TOP}/src/control/rotaryencoder.cpp
+	${TOP}/src/control/simplebuttons.cpp
+	${TOP}/src/control/simpleencoder.cpp
+	${TOP}/src/lcd/drivers/hd44780.cpp
+	${TOP}/src/lcd/drivers/hd44780fourbit.cpp
+	${TOP}/src/lcd/drivers/hd44780i2c.cpp
+	${TOP}/src/lcd/drivers/sh1106.cpp
+	${TOP}/src/lcd/drivers/ssd1306.cpp
 	${TOP}/src/lcd/ui.cpp
 	${TOP}/src/synth/mt32synth.cpp
 	${TOP}/src/synth/soundfontsynth.cpp
@@ -66,6 +75,7 @@ add_executable(mt32-pi
 	src/audiooutput.cpp
 	src/circle_compat.cpp
 	src/ff_posix.cpp
+	src/hal_linux.cpp
 	src/main.cpp
 	src/mt32pilinux.cpp
 	src/serialmidi.cpp

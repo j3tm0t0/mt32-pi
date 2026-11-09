@@ -22,7 +22,12 @@
 
 #include <circle/types.h>
 
+#include <circle/i2cmaster.h>
+
 #include "config.h"
+#include "control/control.h"
+#include "event.h"
+#include "lcd/lcd.h"
 #include "lcd/ui.h"
 #include "midiparser.h"
 #include "optional.h"
@@ -75,6 +80,25 @@ private:
 	void SwitchSynth(TSynth Synth);
 	void SwitchMT32ROMSet(TMT32ROMSet ROMSet);
 	void SwitchSoundFont(size_t nIndex);
+	void NextMT32ROMSet();
+	void DeferSwitchSoundFont(size_t nIndex);
+	void SetMasterVolume(s32 nVolume);
+
+	// Front panel (LCD/OLED, buttons/encoder) - live mode only
+	enum class TLCDLogType
+	{
+		Startup,
+		Error,
+		Warning,
+		Notice,
+		Spinner,
+	};
+
+	void InitFrontPanel();
+	void UIThread();
+	void ProcessEventQueue();
+	void ProcessButtonEvent(const TButtonEvent& Event);
+	void LCDLog(TLCDLogType Type, const char* pFormat, ...) __attribute__((format(printf, 3, 4)));
 
 	void AudioThread();
 	void ConfigureRealtime(const char* pThreadName, int nPriority, int nCPU);
@@ -86,6 +110,19 @@ private:
 	CConfig& m_Config;
 
 	CUserInterface m_UserInterface;
+	CI2CMaster* m_pI2CMaster;
+	CLCD* m_pLCD;
+	CControl* m_pControl;
+	TEventQueue m_EventQueue;
+	std::thread m_UIThread;
+	unsigned m_nLCDUpdateTime;
+
+	u8 m_nMasterVolume;
+
+	// Deferred SoundFont switch (lets the user step through names before loading)
+	bool m_bDeferredSoundFontSwitchFlag;
+	size_t m_nDeferredSoundFontSwitchIndex;
+	unsigned m_nDeferredSoundFontSwitchTime;
 
 	CMT32Synth* m_pMT32Synth;
 	CSoundFontSynth* m_pSoundFontSynth;

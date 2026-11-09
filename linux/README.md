@@ -17,9 +17,11 @@ commands. The Circle-specific parts are replaced:
 | FatFs on SD/USB                         | Plain directories (`-d DATA_DIR`, optional `-u USB_DIR`) |
 | Patched FluidSynth + zone allocator     | Stock distro `libfluidsynth`                            |
 
-Not ported (yet): LCD/OLED displays, buttons/encoder, MiSTer control, and
-the built-in networking (use `rtpmidid` for RTP-MIDI and `scp`/Samba for
-files instead).
+| LCD/OLED over Circle I²C/GPIO drivers   | Same drivers on `/dev/i2c-1` (i2c-dev) and the GPIO character device |
+| Buttons/encoder polled by a 1 kHz IRQ   | Same code, polled by a 1 kHz timer thread               |
+
+Not ported (yet): MiSTer control and the built-in networking (use
+`rtpmidid` for RTP-MIDI and `scp`/Samba for files instead).
 
 ## Building
 
@@ -64,6 +66,8 @@ alsa_device = default        # ALSA PCM, e.g. hw:0, plughw:CARD=sndrpihifiberry
 alsa_periods = 2             # buffer = chunk_size * alsa_periods
 midi_autoconnect = true      # subscribe to all MIDI sources, incl. hot-plugged USB
 serial_device = /dev/serial0 # GPIO UART MIDI ("none" to disable); uses [midi] gpio_baud_rate / gpio_thru
+i2c_device = /dev/i2c-1      # bus for [lcd] I2C displays
+gpio_chip = auto             # GPIO chip for buttons/encoder/4-bit LCD (auto finds the Pi 4/Pi 5 header chip)
 realtime_priority = 70       # SCHED_FIFO priority of the audio thread, 0 = off
 audio_cpu = -1               # pin the audio thread to a CPU core, -1 = no pinning
 lock_memory = true           # mlockall() if RLIMIT_MEMLOCK is unlimited
@@ -96,6 +100,18 @@ and remove `console=serial0,115200` from `/boot/firmware/cmdline.txt`. mt32-pi
 then opens `/dev/serial0` at `[midi] gpio_baud_rate` (31250) itself; no
 `midi-uart0` overlay or ttymidi is needed. If the port is still the kernel
 console, mt32-pi refuses to use it and logs why.
+
+### LCD/OLED and buttons
+
+`[lcd]` and `[control]` work as on the Pi; the drivers and UI code are the
+same. Enable I²C in `/boot/firmware/config.txt` with `dtparam=i2c_arm=on`.
+GPIO access uses the kernel GPIO character device (no libgpiod needed), so
+it works on both the Pi 4 and the Pi 5. Run as a user in the `gpio`, `i2c`
+and `dialout` groups (the systemd unit does this).
+
+For development without hardware, `i2c_device = sim:/tmp/oled.pbm` writes
+every SSD1306 frame to a PBM image and `gpio_chip = sim:/tmp/gpio.txt` reads
+the BCM pin numbers that are LOW (pressed) from a text file.
 
 ### USB / software MIDI
 
