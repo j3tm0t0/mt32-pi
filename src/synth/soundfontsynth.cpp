@@ -31,10 +31,18 @@
 #include "synth/soundfontsynth.h"
 #include "synth/yamahasysex.h"
 #include "utility.h"
+#ifndef MT32PI_LINUX
 #include "zoneallocator.h"
+#endif
 
 LOGMODULE("soundfontsynth");
 const char SoundFontPath[] = "soundfonts";
+
+#ifdef MT32PI_LINUX
+// On Linux, FluidSynth is the stock library and opens files itself, so FatFs-style paths must be mapped to host paths
+#define SOUNDFONT_HOST_PATH(PATH) ff_translate_path(PATH).c_str()
+#else
+#define SOUNDFONT_HOST_PATH(PATH) (PATH)
 
 extern "C"
 {
@@ -128,6 +136,7 @@ extern "C"
 		return f_lseek(pFile, ofs) == FR_OK ? FLUID_OK : FLUID_FAILED;
 	}
 }
+#endif
 
 CSoundFontSynth::CSoundFontSynth(unsigned nSampleRate)
 	: CSynthBase(nSampleRate),
@@ -423,7 +432,7 @@ bool CSoundFontSynth::Reinitialize(const char* pSoundFontPath, const TFXProfile*
 
 	const unsigned int nLoadStart = CTimer::GetClockTicks();
 
-	if (fluid_synth_sfload(m_pSynth, pSoundFontPath, true) == FLUID_FAILED)
+	if (fluid_synth_sfload(m_pSynth, SOUNDFONT_HOST_PATH(pSoundFontPath), true) == FLUID_FAILED)
 	{
 		LOGERR("Failed to load SoundFont");
 		return false;
