@@ -1,0 +1,30 @@
+#
+# systemd unit for mt32-pi on Linux (Raspberry Pi OS Lite etc.)
+#
+#   sudo install -m 644 linux/mt32-pi.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now mt32-pi
+#
+# Put mt32-pi.cfg, roms/ and soundfonts/ into /var/lib/mt32-pi.
+#
+
+[Unit]
+Description=mt32-pi MIDI synthesizer (MT-32 emulation / SoundFont)
+After=sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/mt32-pi -d /var/lib/mt32-pi
+StateDirectory=mt32-pi
+DynamicUser=yes
+SupplementaryGroups=audio
+
+# Allow the audio thread to run SCHED_FIFO and lock memory
+LimitRTPRIO=95
+LimitMEMLOCK=infinity
+
+# The "reboot" custom SysEx (F0 7D 00 F7) exits the process; restart it
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
