@@ -6,6 +6,7 @@
 #include <sched.h>
 #include <sys/mman.h>
 #include <sys/resource.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <cerrno>
@@ -409,9 +410,24 @@ int CMT32PiLinux::Run(const char* pMIDISource, unsigned nStatsIntervalSecs, cons
 
 	const bool bMIDIAvailable = m_MIDIInput.Open("mt32-pi", m_Config.LinuxMIDIAutoConnect);
 	if (!bMIDIAvailable)
-		LOGWARN("Running without MIDI input");
+		LOGWARN("ALSA sequencer unavailable; no USB/ALSA MIDI input");
 	else if (pMIDISource && *pMIDISource)
 		m_MIDIInput.Connect(pMIDISource);
+
+	// GPIO UART MIDI, like the bare-metal default; skipped if the port is the kernel console
+	const char* pSerialDevice = m_Config.LinuxSerialDevice;
+	if (*pSerialDevice && strcmp(pSerialDevice, "none") != 0)
+	{
+		if (access(pSerialDevice, F_OK) != 0)
+			LOGNOTE("Serial MIDI device %s not present (enable_uart=1 / dtoverlay needed?)", pSerialDevice);
+		else if (CSerialMIDIInput::IsKernelConsole(pSerialDevice))
+			LOGWARN("%s is the kernel console; not using it for MIDI (remove console=serial0 from cmdline.txt)", pSerialDevice);
+		else
+			m_SerialMIDI.Open(pSerialDevice, m_Config.MIDIGPIOBaudRate, m_Config.MIDIGPIOThru);
+	}
+
+	if (!bMIDIAvailable && !m_SerialMIDI.IsOpen())
+		LOGWARN("Running without MIDI input");
 
 	m_bRunning    = true;
 	m_AudioThread = std::thread(&CMT32PiLinux::AudioThread, this);
@@ -421,6 +437,9 @@ int CMT32PiLinux::Run(const char* pMIDISource, unsigned nStatsIntervalSecs, cons
 	std::vector<pollfd> FDs;
 	if (bMIDIAvailable)
 		FDs = m_MIDIInput.GetPollFDs();
+	const size_t nSeqFDs = FDs.size();
+	if (m_SerialMIDI.IsOpen())
+		FDs.push_back({m_SerialMIDI.GetFD(), POLLIN, 0});
 
 	unsigned nLastStatsTicks = CTimer::Get()->GetTicks();
 	const auto MIDIHandler   = [this](const uint8_t* pData, size_t nSize) {
@@ -446,7 +465,28 @@ int CMT32PiLinux::Run(const char* pMIDISource, unsigned nStatsIntervalSecs, cons
 		{
 			const int nReady = poll(FDs.data(), FDs.size(), nTimeout);
 			if (nReady > 0)
-				m_MIDIInput.Process(MIDIHandler);
+			{
+				bool bSeqReady = false;
+				for (size_t i = 0; i < nSeqFDs; ++i)
+					bSeqReady |= (FDs[i].revents & POLLIN) != 0;
+				if (bSeqReady)
+					m_MIDIInput.Process(MIDIHandler);
+
+				if (m_SerialMIDI.IsOpen() && (FDs.back().revents & (POLLIN | POLLERR | POLLHUP)))
+				{
+					uint8_t Buffer[1024];
+					int nRead;
+					while ((nRead = m_SerialMIDI.Read(Buffer, sizeof(Buffer))) > 0)
+						MIDIHandler(Buffer, static_cast<size_t>(nRead));
+
+					if (nRead < 0)
+					{
+						// Device gone (e.g. USB-serial unplugged); stop polling it
+						m_SerialMIDI.Close();
+						FDs.pop_back();
+					}
+				}
+			}
 		}
 		else if (nTimeout > 0)
 			poll(nullptr, 0, nTimeout);

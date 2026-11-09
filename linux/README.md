@@ -10,7 +10,8 @@ commands. The Circle-specific parts are replaced:
 | Bare metal (Circle)                     | Linux                                                   |
 |-----------------------------------------|---------------------------------------------------------|
 | PWM / HDMI / I²S audio drivers          | ALSA PCM (any card: I²S DAC HAT, HDMI, USB audio...)    |
-| USB MIDI host stack, GPIO UART, Pisound | ALSA sequencer (USB MIDI, rtpmidid, ttymidi, Pisound driver...) |
+| USB MIDI host stack, Pisound           | ALSA sequencer (USB MIDI, rtpmidid, Pisound driver...)  |
+| GPIO UART MIDI                          | Raw tty at 31250 baud via termios2 (`/dev/serial0`)     |
 | Core 2 busy-polling audio task          | Audio thread, `SCHED_FIFO`, blocking ALSA writes        |
 | Core 0 main loop                        | Control thread, `poll()` on the sequencer               |
 | FatFs on SD/USB                         | Plain directories (`-d DATA_DIR`, optional `-u USB_DIR`) |
@@ -62,6 +63,7 @@ DATA_DIR/
 alsa_device = default        # ALSA PCM, e.g. hw:0, plughw:CARD=sndrpihifiberry
 alsa_periods = 2             # buffer = chunk_size * alsa_periods
 midi_autoconnect = true      # subscribe to all MIDI sources, incl. hot-plugged USB
+serial_device = /dev/serial0 # GPIO UART MIDI ("none" to disable); uses [midi] gpio_baud_rate / gpio_thru
 realtime_priority = 70       # SCHED_FIFO priority of the audio thread, 0 = off
 audio_cpu = -1               # pin the audio thread to a CPU core, -1 = no pinning
 lock_memory = true           # mlockall() if RLIMIT_MEMLOCK is unlimited
@@ -78,6 +80,24 @@ mt32-pi -d ~/mt32-pi -D hw:0 -S 10        # pick device, log stats every 10 s
 mt32-pi -d ~/mt32-pi -p song.mid          # play a MIDI file through the live path
 mt32-pi -d ~/mt32-pi -r song.mid -o out.wav   # offline render to WAV
 ```
+
+### GPIO (DIN) MIDI on a Raspberry Pi
+
+MIDI HATs wire the opto-isolated MIDI IN to the UART RX pin (GPIO 15).
+Enable the UART and keep the console off it, then reboot:
+
+```ini
+# /boot/firmware/config.txt
+enable_uart=1
+dtoverlay=disable-bt     # use the full PL011 UART on GPIO 14/15 (stable baud rate)
+```
+
+and remove `console=serial0,115200` from `/boot/firmware/cmdline.txt`. mt32-pi
+then opens `/dev/serial0` at `[midi] gpio_baud_rate` (31250) itself; no
+`midi-uart0` overlay or ttymidi is needed. If the port is still the kernel
+console, mt32-pi refuses to use it and logs why.
+
+### USB / software MIDI
 
 The program shows up as ALSA sequencer client `mt32-pi`; with
 `midi_autoconnect` every hardware MIDI input is connected automatically.

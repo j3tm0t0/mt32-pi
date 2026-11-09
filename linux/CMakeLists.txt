@@ -68,6 +68,7 @@ add_executable(mt32-pi
 	src/ff_posix.cpp
 	src/main.cpp
 	src/mt32pilinux.cpp
+	src/serialmidi.cpp
 	src/smf.cpp
 )
 

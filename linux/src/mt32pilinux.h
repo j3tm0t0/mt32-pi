@@ -32,6 +32,7 @@
 
 #include "alsamidi.h"
 #include "audiooutput.h"
+#include "serialmidi.h"
 
 class CMT32PiLinux : public CMIDIParser
 {
@@ -91,6 +92,7 @@ private:
 	std::atomic<CSynthBase*> m_pCurrentSynth;
 
 	CALSAMIDIInput m_MIDIInput;
+	CSerialMIDIInput m_SerialMIDI;
 	CAudioOutput* m_pAudioOutput;
 	std::thread m_AudioThread;
 

@@ -45,6 +45,7 @@ namespace
 			"  -u, --usb-dir DIR      Optional second volume searched for roms/ and soundfonts/ (like USB: on the Pi)\n"
 			"  -s, --synth NAME       Force initial synth: mt32 | soundfont\n"
 			"  -D, --device NAME      ALSA PCM device (overrides [linux] alsa_device)\n"
+			"  -t, --serial DEV       Serial MIDI device (overrides [linux] serial_device; 'none' disables)\n"
 			"  -m, --midi-in ADDR     Also connect this ALSA sequencer source (e.g. 20:0 or a client name)\n"
 			"  -S, --stats SECS       Log audio render/xrun statistics every SECS seconds\n"
 			"  -p, --play FILE.mid    Live: also play a Standard MIDI File through the real-time path\n"
@@ -74,6 +75,7 @@ int main(int argc, char** argv)
 	std::string USBDir;
 	std::string ALSADevice;
 	std::string MIDISource;
+	std::string SerialDevice;
 	std::string RenderInput;
 	std::string PlayFile;
 	bool bLoop = false;
@@ -89,6 +91,7 @@ int main(int argc, char** argv)
 		{"synth", required_argument, nullptr, 's'},
 		{"device", required_argument, nullptr, 'D'},
 		{"midi-in", required_argument, nullptr, 'm'},
+		{"serial", required_argument, nullptr, 't'},
 		{"stats", required_argument, nullptr, 'S'},
 		{"play", required_argument, nullptr, 'p'},
 		{"loop", no_argument, nullptr, 'l'},
@@ -100,7 +103,7 @@ int main(int argc, char** argv)
 	};
 
 	int nOption;
-	while ((nOption = getopt_long(argc, argv, "d:c:u:s:D:m:S:p:lr:o:vh", Options, nullptr)) != -1)
+	while ((nOption = getopt_long(argc, argv, "d:c:u:s:D:m:t:S:p:lr:o:vh", Options, nullptr)) != -1)
 	{
 		switch (nOption)
 		{
@@ -109,6 +112,7 @@ int main(int argc, char** argv)
 			case 'u': USBDir = optarg; break;
 			case 'D': ALSADevice = optarg; break;
 			case 'm': MIDISource = optarg; break;
+			case 't': SerialDevice = optarg; break;
 			case 'S': nStatsInterval = static_cast<unsigned>(atoi(optarg)); break;
 			case 'p': PlayFile = optarg; break;
 			case 'l': bLoop = true; break;
@@ -170,6 +174,8 @@ int main(int argc, char** argv)
 
 	if (!ALSADevice.empty())
 		Config.LinuxALSADevice = ALSADevice.c_str();
+	if (!SerialDevice.empty())
+		Config.LinuxSerialDevice = SerialDevice.c_str();
 
 	CMT32PiLinux App(Config);
 	g_pApp = &App;
