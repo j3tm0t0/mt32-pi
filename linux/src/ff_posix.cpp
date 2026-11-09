@@ -120,55 +120,18 @@ FSIZE_t f_tell(FIL* fp)
 
 FRESULT f_findnext(DIR* dp, FILINFO* fno)
 {
-	FF_DIR* const pDir = dp;
-	HostDIR* pHostDir  = static_cast<HostDIR*>(pDir->pDir);
+	if (dp->nNext < dp->Entries.size())
+		*fno = dp->Entries[dp->nNext++];
+	else
+		fno->fname[0] = '\0';
 
-	fno->fname[0] = '\0';
-	if (!pHostDir)
-		return FR_OK;
-
-	while (dirent* pEntry = readdir(pHostDir))
-	{
-		if (fnmatch(dp->Pattern.c_str(), pEntry->d_name, 0) != 0)
-			continue;
-
-		if (!strcmp(pEntry->d_name, ".") || !strcmp(pEntry->d_name, ".."))
-			continue;
-
-		strncpy(fno->fname, pEntry->d_name, sizeof(fno->fname) - 1);
-		fno->fname[sizeof(fno->fname) - 1] = '\0';
-		fno->fattrib = 0;
-		fno->fsize   = 0;
-
-		if (pEntry->d_name[0] == '.')
-			fno->fattrib |= AM_HID;
-
-		// Follow symlinks so that linked ROMs/SoundFonts are picked up
-		struct stat Stat;
-		if (fstatat(dirfd(pHostDir), pEntry->d_name, &Stat, 0) == 0)
-		{
-			if (S_ISDIR(Stat.st_mode))
-				fno->fattrib |= AM_DIR;
-			else if (!S_ISREG(Stat.st_mode))
-				fno->fattrib |= AM_SYS;
-			fno->fsize = static_cast<FSIZE_t>(Stat.st_size);
-		}
-		else
-			fno->fattrib |= AM_SYS;
-
-		return FR_OK;
-	}
-
-	// End of directory
-	closedir(pHostDir);
-	pDir->pDir = nullptr;
 	return FR_OK;
 }
 
 FRESULT f_findfirst(DIR* dp, FILINFO* fno, const char* path, const char* pattern)
 {
-	dp->pDir    = nullptr;
-	dp->Pattern = pattern ? pattern : "*";
+	dp->Entries.clear();
+	dp->nNext     = 0;
 	fno->fname[0] = '\0';
 
 	const std::string HostPath = ff_translate_path(path);
@@ -179,17 +142,44 @@ FRESULT f_findfirst(DIR* dp, FILINFO* fno, const char* path, const char* pattern
 	if (!pHostDir)
 		return FR_NO_PATH;
 
-	dp->pDir = pHostDir;
+	const char* pPattern = pattern ? pattern : "*";
+	while (dirent* pEntry = readdir(pHostDir))
+	{
+		if (!strcmp(pEntry->d_name, ".") || !strcmp(pEntry->d_name, ".."))
+			continue;
+
+		if (fnmatch(pPattern, pEntry->d_name, 0) != 0)
+			continue;
+
+		FILINFO Info{};
+		strncpy(Info.fname, pEntry->d_name, sizeof(Info.fname) - 1);
+
+		if (pEntry->d_name[0] == '.')
+			Info.fattrib |= AM_HID;
+
+		// Follow symlinks so that linked ROMs/SoundFonts are picked up
+		struct stat Stat;
+		if (fstatat(dirfd(pHostDir), pEntry->d_name, &Stat, 0) == 0)
+		{
+			if (S_ISDIR(Stat.st_mode))
+				Info.fattrib |= AM_DIR;
+			else if (!S_ISREG(Stat.st_mode))
+				Info.fattrib |= AM_SYS;
+			Info.fsize = static_cast<FSIZE_t>(Stat.st_size);
+		}
+		else
+			Info.fattrib |= AM_SYS;
+
+		dp->Entries.push_back(Info);
+	}
+
+	closedir(pHostDir);
 	return f_findnext(dp, fno);
 }
 
 FRESULT f_closedir(DIR* dp)
 {
-	if (dp->pDir)
-	{
-		closedir(static_cast<HostDIR*>(dp->pDir));
-		dp->pDir = nullptr;
-	}
-
+	dp->Entries.clear();
+	dp->nNext = 0;
 	return FR_OK;
 }

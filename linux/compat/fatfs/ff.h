@@ -16,6 +16,7 @@
 #include <circle/types.h>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 typedef unsigned int UINT;
 typedef unsigned char BYTE;
@@ -64,19 +65,21 @@ struct FIL
 	FSIZE_t nSize = 0;
 };
 
-// FatFs' DIR clashes with POSIX DIR from <dirent.h>; rename it
-#define DIR FF_DIR
-struct FF_DIR
-{
-	void* pDir = nullptr;
-	std::string Pattern;
-};
-
 struct FILINFO
 {
 	FSIZE_t fsize;
 	BYTE fattrib;
 	char fname[256];
+};
+
+// FatFs' DIR clashes with POSIX DIR from <dirent.h>; rename it.
+// mt32-pi never calls f_closedir() (FatFs directory objects own no resources), so the whole listing is read by
+// f_findfirst() and the host directory is closed immediately; the entries are freed with the object.
+#define DIR FF_DIR
+struct FF_DIR
+{
+	std::vector<FILINFO> Entries;
+	size_t nNext = 0;
 };
 
 // Host directory mapping

@@ -105,6 +105,13 @@ bool CMT32PiLinux::InitMT32Synth()
 
 	m_pMT32Synth->SetReversedStereo(m_Config.MT32EmuReversedStereo);
 	m_pMT32Synth->SetUserInterface(&m_UserInterface);
+
+	const CROMManager& ROMManager = m_pMT32Synth->GetROMManager();
+	LOGNOTE("MT-32 ROM sets: MT-32 old %s, MT-32 new %s, CM-32L %s; using %s",
+		ROMManager.HaveROMSet(TMT32ROMSet::MT32Old) ? "yes" : "no",
+		ROMManager.HaveROMSet(TMT32ROMSet::MT32New) ? "yes" : "no",
+		ROMManager.HaveROMSet(TMT32ROMSet::CM32L) ? "yes" : "no",
+		m_pMT32Synth->GetControlROMName());
 	return true;
 }
 
@@ -237,8 +244,14 @@ void CMT32PiLinux::SwitchMT32ROMSet(TMT32ROMSet ROMSet)
 		return;
 
 	LOGNOTE("Switching to ROM set %d", static_cast<u8>(ROMSet));
-	if (m_pMT32Synth->SwitchROMSet(ROMSet) && m_pCurrentSynth.load() == m_pMT32Synth)
-		m_pMT32Synth->ReportStatus();
+	if (m_pMT32Synth->SwitchROMSet(ROMSet))
+	{
+		LOGNOTE("Now using %s", m_pMT32Synth->GetControlROMName());
+		if (m_pCurrentSynth.load() == m_pMT32Synth)
+			m_pMT32Synth->ReportStatus();
+	}
+	else
+		LOGNOTE("ROM set %d not switched (already active or unavailable)", static_cast<u8>(ROMSet));
 }
 
 void CMT32PiLinux::SwitchSoundFont(size_t nIndex)
